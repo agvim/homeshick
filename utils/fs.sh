@@ -9,7 +9,10 @@ function symlink {
 		ignore 'ignored' "$castle"
 		return $EX_SUCCESS
 	fi
-	for filepath in $(find $repo/home -mindepth 1); do
+	#TODO XXX FIXME: EXAMINE DETAILED GIT FILES SINCE YOU MAY WANT TO TRACK
+	#YOUR GIT CONFIG!
+	#DO NOT SYMLINK GIT STUFF.
+	for filepath in $(find $repo/home -mindepth 1 -not -path '*.git*'); do
 		file=${filepath#$repo/home/}
 
 		if [[ -d $repo/home/$file && -d $HOME/$file ]]; then
