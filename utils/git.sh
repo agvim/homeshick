@@ -13,7 +13,8 @@ function parse_url {
 function clone {
 	[[ ! $1 ]] && help_err clone
 	local git_repo=$1
-	local repo_path="$repos/$(parse_url $git_repo)"
+        local repo_name=$(parse_url $git_repo)
+	local repo_path="$repos/$repo_name"
 	if [[ $git_repo =~ ^([A-Za-z_-]+\/[A-Za-z_-]+)$ ]]; then
 		git_repo="https://github.com/$git_repo.git"
 	fi
@@ -35,6 +36,13 @@ function clone {
 		[[ $? == 0 ]] || err $EX_SOFTWARE "Unable to clone submodules for $git_repo. Git says:" "$git_out"
 		success
 	fi
+	if [[ -f $repo_path/oninstall.sh ]]; then
+		prompt_no 'clone' "The castle $repo_name has an oninstall.sh script" 'run it?'
+		if [[ $? = 0 ]]; then
+			$repo_path/oninstall.sh
+		fi
+	fi
+
 	return $EX_SUCCESS
 }
 
@@ -60,12 +68,16 @@ function pull {
 	[[ ! $1 ]] && help_err pull
 	local castle=$1
 	local repo="$repos/$castle"
+	local didupdate=0
 	pending 'pull' $castle
 	castle_exists 'pull' $castle
 
 	local git_out
 	git_out=$(cd $repo; git pull 2>&1)
 	[[ $? == 0 ]] || err $EX_SOFTWARE "Unable to pull $repo. Git says:" "$git_out"
+
+	#TODO XXX FIXME: should find a cleaner way to detect it
+	[[ $git_out != "Already up-to-date." ]] && didupdate=1
 
 	if [[ $(version_compare $GIT_VERSION 1.6.5) -ge 0 ]]; then
 		git_out=$(cd $repo; git submodule update --recursive --init 2>&1)
@@ -75,6 +87,12 @@ function pull {
 		[[ $? == 0 ]] || err $EX_SOFTWARE "Unable update submodules for $repo. Git says:" "$git_out"
 	fi
 	success
+	if [[ didupdate -eq 1 && -f $repo/onupdate.sh ]];then
+		prompt_no 'pull' "The castle $castle has been updated and has an onupdate.sh script" 'run it?'
+		if [[ $? = 0 ]]; then
+			$repo/onupdate.sh
+		fi
+	fi
 	return $EX_SUCCESS
 }
 
