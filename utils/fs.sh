@@ -43,8 +43,8 @@ function symlink {
 			rm -rf "$HOME/$file"
 		fi
 
-		if [[ -d $repo/home/$file ]]; then
-			pending 'directory' $file
+		if [[ -d $repo/home/$file && ! -L $repo/home/$file ]]; then
+			pending $bldblu 'directory' $file
 			mkdir $HOME/$file
 		else
 			pending 'symlink' $file
@@ -106,11 +106,5 @@ function home_exists {
 }
 
 function abs_path {
-	local target=$1
-	local file=$(cd "$(dirname -- "$target")" &>/dev/null; printf "%s/%s" "$(pwd -P)" "$(basename $target)")
-	if [[ -e $file ]]; then
-		printf "$file"
-	else
-		err $EX_ERR "File not found: '$target'"
-	fi
+	(cd "${1%/*}" &>/dev/null; printf "%s/%s" "$(pwd)" "${1##*/}")
 }
