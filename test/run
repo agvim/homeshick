@@ -2,16 +2,37 @@
 
 export SCRIPTDIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
+KEEP_PATH=false
+test_suites=()
+while [[ $# -gt 0 ]]; do
+	case $1 in
+		-h | --help)
+			printf "Run homeshick unit tests\n"
+			printf " Usage: run [options] [SUITES..]\n"
+			printf " Options:\n"
+			printf "   -p, --keep-path   # Prevent \$PATH modifications\n"
+			exit 0
+      ;;
+		-p | --keep-path) KEEP_PATH=true; shift; continue ;;
+		*)
+			if [[ $1 =~ ^- ]]; then
+				printf "Unknown option '$1'\n" >&2
+				exit 64 # 64=$EX_USAGE
+			fi
+			test_suites+=($1)
+			shift; continue ;;
+	esac
+done
 
 if [[ ! -x $SHUNIT2 ]]; then
 	if [[ ! -x $SCRIPTDIR/shunit2-2.1.6/src/shunit2 ]]; then
 		printf "shunit2 not found. You can set its path with \`export SHUNIT2=/path/to/shunit2/src/shunit2'.\n"
-		printf "Alternatively you can download it automatically now.\n"
+		printf "Alternatively the testrunner can download it automatically now.\n"
 		read -p "Download? [yN]" prompt
 		if [[ ! $prompt =~ [Yy] ]]; then
-			exit 78
+			exit 78 # 78=$EX_CONFIG
 		fi
-		type wget 2> /dev/null
+		type wget >/dev/null 2>&1
 		if [[ $? = 0 ]]; then
 			wget -qO - https://shunit2.googlecode.com/files/shunit2-2.1.6.tgz | tar -xzC $SCRIPTDIR
 		else
@@ -26,12 +47,40 @@ if [[ ! -f $SHUNIT2 ]]; then
 	exit 1
 fi
 
+# Check if expect is installed
+type expect >/dev/null 2>&1
+if [[ $? != 0 ]]; then
+	printf "\`expect' (http://www.tcl.tk/man/expect5.31/index.html) is used by some unit tests\n"
+	printf "and must be installed. Please install \`expect' before continuing.\n"
+	exit 1 # EX_ERR
+fi
+
+# Check if coreutils is in PATH
+system=$(uname -a)
+if [[ $system =~ "Darwin" && ! $system =~ "AppleTV" ]]; then
+	type brew >/dev/null 2>&1
+	if [[ $? = 0 ]]; then
+		coreutils_path=$(brew --prefix coreutils 2>/dev/null)/libexec/gnubin
+		if [[ -d $coreutils_path && $PATH == *$coreutils_path* ]]; then
+			printf "coreutils detected in \$PATH... "
+			if ! $KEEP_PATH; then
+				printf "removing (run with -p to prevent this).\n"
+				export PATH=${PATH//$coreutils_path/''}
+				export PATH=${PATH//'::'/':'} # Remove any left over colons
+			else
+				printf "not removing.\n"
+			fi
+		fi
+	fi
+fi
+
 set -e
 
 export REPO_FIXTURES=$SCRIPTDIR/repos
 export HOME=$SCRIPTDIR/home
 export NOTHOME=$SCRIPTDIR/nothome
 
+rm -rf $REPO_FIXTURES $HOME $NOTHOME
 mkdir -p $REPO_FIXTURES $HOME $NOTHOME
 
 export HOMESICK=$HOME/.homesick
@@ -43,12 +92,19 @@ setup_repo_fixtures
 source $SCRIPTDIR/link_homeshick.sh
 setup_homeshick
 
-if [[ -z "$1" ]]; then
-	bash $SCRIPTDIR/clone.sh
-	bash $SCRIPTDIR/link.sh
-	bash $SCRIPTDIR/track.sh
-else
-	for suite in ${@}; do
-		bash $SCRIPTDIR/$suite.sh
-	done
+set +e
+
+exit_status=0
+if [[ -z "$test_suites" ]]; then
+	test_suites=("clone" "link" "track" "list" "check")
 fi
+for test_suite in ${test_suites[*]}; do
+	printf "\nTestsuite: $test_suite\n"
+	bash $SCRIPTDIR/suites/$test_suite.sh
+	result=$?
+	if [[ $exit_status == 0 && $result != 0 ]]; then
+		exit_status=$result
+	fi
+done
+
+exit $exit_status

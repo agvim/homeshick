@@ -98,7 +98,9 @@ function pull {
 
 function list {
 	for reponame in $(list_castle_names); do
-		local remote_url=$(cd $repos/$reponame; git config remote.origin.url)
+		local ref=$(git symbolic-ref --short HEAD 2>/dev/null)
+		local remote_name=$(cd $repos/$reponame; git config branch.$ref.remote 2>/dev/null)
+		local remote_url=$(cd $repos/$reponame; git config remote.$remote_name.url)
 		info $reponame $remote_url
 	done
 	return $EX_SUCCESS
@@ -120,8 +122,9 @@ function check {
 	pending 'checking' $castle
 	castle_exists 'check' $castle
 
-	local ref=$(cd $repo; git symbolic-ref HEAD 2>/dev/null)
-	local remote_url=$(cd $repo; git config remote.origin.url 2>/dev/null)
+	local ref=$(cd $repo; git symbolic-ref --short HEAD 2>/dev/null)
+	local remote_name=$(cd $repos/$reponame; git config branch.$ref.remote 2>/dev/null)
+	local remote_url=$(cd $repo; git config remote.$remote_name.url 2>/dev/null)
 	local remote_head=$(git ls-remote -q --heads "$remote_url" "$ref" 2>/dev/null | cut -f 1)
 	if [[ $remote_head ]]; then
 		local local_head=$(cd $repo; git rev-parse HEAD)
@@ -129,8 +132,10 @@ function check {
 			success 'up to date'
 			exit_status=$EX_SUCCESS
 		else
-			(cd $repo; git branch --contains "$remote_head" 2>/dev/null) > /dev/null
-			if [[ $? == 0 ]]; then
+			local merge_base=$(cd $repo; git merge-base "$remote_head" "$local_head" 2>/dev/null)
+			local checked_ref
+			checked_ref=$(cd $repo; git rev-parse --verify "$remote_head" 2>/dev/null)
+			if [[ $? == 0 && $merge_base != "" && $merge_base == $checked_ref ]]; then
 				fail 'ahead'
 				exit_status=$EX_AHEAD
 			else

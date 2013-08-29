@@ -1,8 +1,6 @@
 #!/bin/bash
 
 function setup_repo_fixtures {
-	rm -rf $REPO_FIXTURES
-
 	local git_username="Homeshick user"
 	local git_useremail="homeshick@example.com"
 
@@ -22,6 +20,22 @@ PS1='\[33[01;32m\]\u@\h\[33[00m\]:\[33[01;34m\]\w\'
 EOF
 		git add .bashrc
 		git commit -m '.bashrc file for my new rc-files repo'
+
+		cat > $NOTHOME/some-file <<EOF
+File with some content.
+EOF
+		ln -s $NOTHOME/some-file symlinked-file
+		git add symlinked-file
+		git commit -m 'Added a symlinked file'
+
+		mkdir $NOTHOME/some-directory
+		ln -s $NOTHOME/some-directory symlinked-directory
+		git add symlinked-directory
+		git commit -m 'Added a symlinked directory'
+
+		ln -s $NOTHOME/nonexistent dead-symlink
+		git add dead-symlink
+		git commit -m 'Added a dead symlink'
 	) > /dev/null
 
 	local my_module="$REPO_FIXTURES/my_module"
@@ -54,6 +68,26 @@ EOF
 		git commit -m 'Files added for my new module-files repo'
 	) > /dev/null
 
+	local dotfiles_vim_submodule="$REPO_FIXTURES/dotfiles_vim_submodule"
+	(
+		git init $dotfiles_vim_submodule
+		cd $dotfiles_vim_submodule
+		git config user.name $git_username
+		git config user.email $git_useremail
+
+		mkdir -p autoload
+		cat > autoload/pathogen.vim <<EOF
+dummy pathogen autloader file
+EOF
+
+		mkdir -p bundles/vim-git
+		cat > bundles/vim-git/README.md <<EOF
+Just a random README for the dummy vim-git bundle
+EOF
+		git add autoload bundles
+		git commit -m 'vim-git bundle for my vim config'
+	) > /dev/null
+
 	local dotfiles="$REPO_FIXTURES/dotfiles"
 	(
 		git init $dotfiles
@@ -84,5 +118,8 @@ EOF
 		git add .ssh
 		git commit -m 'Share known_hosts across machines'
 
+		cd $dotfiles
+		git submodule add $dotfiles_vim_submodule home/.vim
+		git commit -m 'New vim configuration submodule'
 	) > /dev/null
 }
