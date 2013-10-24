@@ -13,16 +13,16 @@ function parse_url {
 function clone {
 	[[ ! $1 ]] && help_err clone
 	local git_repo=$1
-        local repo_name=$(parse_url $git_repo)
-	local repo_path="$repos/$repo_name"
-	if [[ $git_repo =~ ^([A-Za-z_-]+\/[A-Za-z_-]+)$ ]]; then
+	local repo_path="$repos/$(parse_url $git_repo)"
+	if [[ $git_repo =~ ^([0-9A-Za-z_-]+\/[0-9A-Za-z_-]+)$ ]]; then
 		git_repo="https://github.com/$git_repo.git"
 	fi
 	pending 'clone' $git_repo
 	test -e $repo_path && err $EX_ERR "$repo_path already exists"
 
 	local git_out
-	if [[ $(version_compare $GIT_VERSION 1.6.5) -ge 0 ]]; then
+	version_compare $GIT_VERSION 1.6.5
+	if [[ $? != 2 ]]; then
 		git_out=$(git clone --recursive $git_repo $repo_path 2>&1)
 		[[ $? == 0 ]] || err $EX_SOFTWARE "Unable to clone $git_repo. Git says:" "$git_out"
 		success
@@ -79,7 +79,8 @@ function pull {
 	#TODO XXX FIXME: should find a cleaner way to detect it
 	[[ $git_out != "Already up-to-date." ]] && didupdate=1
 
-	if [[ $(version_compare $GIT_VERSION 1.6.5) -ge 0 ]]; then
+	version_compare $GIT_VERSION 1.6.5
+	if [[ $? != 2 ]]; then
 		git_out=$(cd $repo; git submodule update --recursive --init 2>&1)
 		[[ $? == 0 ]] || err $EX_SOFTWARE "Unable update submodules for $repo. Git says:" "$git_out"
 	else
@@ -98,9 +99,10 @@ function pull {
 
 function list {
 	for reponame in $(list_castle_names); do
-		local ref=$(git symbolic-ref --short HEAD 2>/dev/null)
-		local remote_name=$(cd $repos/$reponame; git config branch.$ref.remote 2>/dev/null)
-		local remote_url=$(cd $repos/$reponame; git config remote.$remote_name.url)
+		local ref=$(cd $repos/$reponame; git symbolic-ref HEAD 2>/dev/null)
+		local branch=${ref#refs/heads/}
+		local remote_name=$(cd $repos/$reponame; git config branch.$branch.remote 2>/dev/null)
+		local remote_url=$(cd $repos/$reponame; git config remote.$remote_name.url 2>/dev/null)
 		info $reponame $remote_url
 	done
 	return $EX_SUCCESS
@@ -122,10 +124,11 @@ function check {
 	pending 'checking' $castle
 	castle_exists 'check' $castle
 
-	local ref=$(cd $repo; git symbolic-ref --short HEAD 2>/dev/null)
-	local remote_name=$(cd $repos/$reponame; git config branch.$ref.remote 2>/dev/null)
+	local ref=$(cd $repo; git symbolic-ref HEAD 2>/dev/null)
+	local branch=${ref#refs/heads/}
+	local remote_name=$(cd $repo; git config branch.$branch.remote 2>/dev/null)
 	local remote_url=$(cd $repo; git config remote.$remote_name.url 2>/dev/null)
-	local remote_head=$(git ls-remote -q --heads "$remote_url" "$ref" 2>/dev/null | cut -f 1)
+	local remote_head=$(git ls-remote -q --heads "$remote_url" "$branch" 2>/dev/null | cut -f 1)
 	if [[ $remote_head ]]; then
 		local local_head=$(cd $repo; git rev-parse HEAD)
 		if [[ $remote_head == $local_head ]]; then
