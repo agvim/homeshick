@@ -88,10 +88,10 @@ function pull {
 		[[ $? == 0 ]] || err $EX_SOFTWARE "Unable update submodules for $repo. Git says:" "$git_out"
 	fi
 	success
-	if [[ didupdate -eq 1 && -f $repo/onupdate.sh ]];then
-		prompt_no 'pull' "The castle $castle has been updated and has an onupdate.sh script" 'run it?'
+	if [[ -f $repo/onupdate.sh ]]; then
+		prompt_no 'pull' "The castle $castle has an onupdate.sh script" "run it (arg=$didupdate)?"
 		if [[ $? = 0 ]]; then
-			$repo/onupdate.sh
+			$repo/onupdate.sh $didupdate
 		fi
 	fi
 	return $EX_SUCCESS
