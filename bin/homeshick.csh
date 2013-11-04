@@ -2,7 +2,6 @@
 #
 #   alias homeshick "source $HOME/.homesick/repos/homeshick/bin/homeshick.csh"
 #
-
 if ( "$1" == "cd" && "x$2" != "x" ) then
     if ( -d $HOME/.homesick/repos/$2/home ) then
         cd $HOME/.homesick/repos/$2/home
