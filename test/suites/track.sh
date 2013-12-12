@@ -6,10 +6,12 @@ function oneTimeSetUp() {
 
 function setUp() {
 	$HOMESHICK_FN --batch clone $REPO_FIXTURES/rc-files > /dev/null
+	$HOMESHICK_FN --batch clone "$REPO_FIXTURES/repo with spaces in name" > /dev/null
 }
 
 function tearDown() {
 	rm -rf "$HOMESICK/repos/rc-files"
+	rm -rf "$HOMESICK/repos/repo with spaces in name"
 	find "$HOME" -mindepth 1 -not -path "${HOMESICK}*" -delete
 }
 
@@ -22,6 +24,46 @@ EOF
 	assertTrue "\`track' did not symlink the .zshrc file" "[ -L $HOME/.zshrc ]"
 }
 
+function testPathWithSpaces() {
+	cat > $HOME/.path\ with\ spaces <<EOF
+homeshick --batch refresh
+EOF
+	$HOMESHICK_FN track rc-files $HOME/.path\ with\ spaces > /dev/null
+	assertEquals "\`track' did not exit with status 0" 0 $?
+	assertTrue "\`track' did not move the \`.path with spaces' file" "[ -f $HOMESICK/repos/rc-files/home/.path\ with\ spaces ]"
+	assertTrue "\`track' did not symlink the \`.path with spaces' file" "[ -L $HOME/.path\ with\ spaces ]"
+}
+
+function testPathWithSpaces2() {
+	mkdir -p $HOME/deep\ folder/structure/with\ spaces
+	local file=$HOME/deep\ folder/structure/with\ spaces/.file\ with\ spaces
+	cat > "$file" <<EOF
+homeshick --batch refresh
+EOF
+	$HOMESHICK_FN track rc-files $HOME/deep\ folder/structure/with\ spaces/.file\ with\ spaces > /dev/null
+	assertEquals "\`track' did not exit with status 0" 0 $?
+	assertTrue "\`track' did not move the \`.file with spaces' file" "[ -f $HOMESICK/repos/rc-files/home/deep\ folder/structure/with\ spaces/.file\ with\ spaces ]"
+	assertTrue "\`track' did not symlink the \`.file with spaces' file" "[ -L \"$file\" ]"
+}
+
+function testTwoPathsWithSpaces() {
+	mkdir -p $HOME/deep\ folder/structure/with\ spaces
+	local file1=$HOME/deep\ folder/structure/with\ spaces/.file\ with\ spaces
+	local file2=$HOME/.path\ with\ spaces
+	cat > "$file1" <<EOF
+homeshick --batch refresh
+EOF
+	cat > "$file2" <<EOF
+homeshick --batch refresh
+EOF
+	$HOMESHICK_FN track rc-files $HOME/.path\ with\ spaces $HOME/deep\ folder/structure/with\ spaces/.file\ with\ spaces > /dev/null
+	assertEquals "\`track' did not exit with status 0" 0 $?
+	assertTrue "\`track' did not move the \`.file with spaces' file" "[ -f $HOMESICK/repos/rc-files/home/deep\ folder/structure/with\ spaces/.file\ with\ spaces ]"
+	assertTrue "\`track' did not symlink the \`.file with spaces' file" "[ -L \"$file1\" ]"
+	assertTrue "\`track' did not move the \`.path with spaces' file" "[ -f $HOMESICK/repos/rc-files/home/.path\ with\ spaces ]"
+	assertTrue "\`track' did not symlink the \`.path with spaces' file" "[ -L \"$file2\" ]"
+}
+
 function testRelative() {
 	cat > $HOME/.zshrc <<EOF
 homeshick --batch refresh
@@ -29,6 +71,16 @@ EOF
 	(cd $HOME; $HOMESHICK_FN track rc-files .zshrc) > /dev/null
 	assertTrue "\`track' did not move the .zshrc file" "[ -f $HOMESICK/repos/rc-files/home/.zshrc ]"
 	assertTrue "\`track' did not symlink the .zshrc file" "[ -L $HOME/.zshrc ]"
+}
+
+function testRepoWithSpaces() {
+	cat > $HOME/.vimrc <<EOF
+My empty vim config
+EOF
+	(cd $HOME; $HOMESHICK_FN track repo\ with\ spaces\ in\ name .vimrc) > /dev/null
+	local file="$HOMESICK/repos/repo with spaces in name/home/.vimrc"
+	assertTrue "\`track' did not move the .vimrc file" "[ -f \"$file\" ]"
+	assertTrue "\`track' did not symlink the .vimrc file" "[ -L $HOME/.vimrc ]"
 }
 
 function testNOutsideHomedir() {

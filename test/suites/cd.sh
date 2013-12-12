@@ -2,16 +2,15 @@
 
 function oneTimeSetUp() {
 	source $HOMESHICK_FN_SRC
-}
-
-function setUp() {
 	$HOMESHICK_FN --batch clone $REPO_FIXTURES/dotfiles > /dev/null
 	$HOMESHICK_FN --batch clone $REPO_FIXTURES/my_module > /dev/null
+	$HOMESHICK_FN --batch clone "$REPO_FIXTURES/repo with spaces in name" > /dev/null
 }
 
-function tearDown() {
+function oneTimeTearDown() {
 	rm -rf "$HOMESICK/repos/dotfiles"
 	rm -rf "$HOMESICK/repos/my_module"
+	rm -rf "$HOMESICK/repos/repo with spaces in name"
 }
 
 function testPwd() {
@@ -37,6 +36,12 @@ function testNExitCode() {
 	$HOMESHICK_FN cd non_existent 2>/dev/null
 	result=$?
 	assertEquals "\`cd' did not exit with code 1" 1 $result
+}
+
+function testPwdWithSpaces() {
+	local repo_home="$HOMESICK/repos/repo with spaces in name"
+	local result=$($HOMESHICK_FN cd repo\ with\ spaces\ in\ name && pwd)
+	assertSame "\`cd' did not change to the correct directory" "$repo_home" "$result"
 }
 
 source $SHUNIT2

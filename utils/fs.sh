@@ -3,26 +3,26 @@
 function symlink {
 	[[ ! $1 ]] && help symlink
 	local castle=$1
-	castle_exists $castle
+	castle_exists "$castle"
 	local repo="$repos/$castle"
 	if [[ ! -d $repo/home ]]; then
 		ignore 'ignored' "$castle"
 		return $EX_SUCCESS
 	fi
-	for remote in $(find $repo/home -mindepth 1 -name .git -prune -o -print); do
+	while IFS= read -d $'\0' -r remote ; do
 		filename=${remote#$repo/home/}
 		local=$HOME/$filename
 
-		if [[ -e $local || -L $local  ]]; then
+		if [[ -e $local || -L $local ]]; then
 			# $local exists (but may be a dead symlink)
 			if [[ -L $local && $(readlink "$local") == $remote ]]; then
 				# $local symlinks to $remote.
 				if [[ -d $remote && ! -L $remote ]]; then
 					# If $remote is a directory -> legacy handling.
-					rm $local
+					rm "$local"
 				else
 					# $local points at $remote and $remote is not a directory
-					ignore 'identical' $filename
+					ignore 'identical' "$filename"
 					continue
 				fi
 			else
@@ -31,11 +31,11 @@ function symlink {
 					# $remote is a real directory while
 					# $local is a directory or a symlinked directory
 					# we do not take any action regardless of which it is.
-					ignore 'identical' $filename
+					ignore 'identical' "$filename"
 					continue;
 				fi
 				if $SKIP; then
-					ignore 'exists' $filename
+					ignore 'exists' "$filename"
 					continue
 				fi
 				if ! $FORCE; then
@@ -49,22 +49,22 @@ function symlink {
 
 		if [[ ! -d $remote || -L $remote ]]; then
 			# $remote is not a real directory so we create a symlink to it
-			pending 'symlink' $filename
-			ln -s $remote $local
+			pending 'symlink' "$filename"
+			ln -s "$remote" "$local"
 		else
-			pending 'directory' $filename
-			mkdir $local
+			pending 'directory' "$filename"
+			mkdir "$local"
 		fi
 
 		success
-	done
+	done < <(find "$repo/home" -mindepth 1 -name .git -prune -o -print0)
 	return $EX_SUCCESS
 }
 
 function track {
 	[[ ! $1 || ! $2 ]] && help track
 	local castle=$1
-	local filename=$(abs_path $2)
+	local filename=$(abs_path "$2")
 	if [[ $filename != $HOME/* ]]; then
 		err $EX_ERR "The file $filename must be in your home directory."
 	fi
@@ -74,8 +74,8 @@ function track {
 
 	local repo="$repos/$castle"
 	local newfile="$repo/home/${filename#$HOME/}"
-	pending "symlink" "$newfile to $filename"
-	home_exists 'track' $castle
+	pending 'symlink' "$newfile to $filename"
+	home_exists 'track' "$castle"
 	if [[ ! -e $filename ]]; then
 		err $EX_ERR "The file $filename does not exist."
 	fi
@@ -85,10 +85,11 @@ function track {
 	if [[ ! -f $filename ]]; then
 		err $EX_ERR "The file $filename must be a regular file."
 	fi
-	mkdir -p $(dirname $newfile)
+	local newfolder=$(dirname "$newfile")
+	mkdir -p "$newfolder"
 	mv -f "$filename" "$newfile"
 	ln -s "$newfile" "$filename"
-	(cd $repo; git add "$newfile")
+	(cd "$repo"; git add "$newfile")
 	success
 }
 

@@ -62,7 +62,7 @@ EOF
 		git config user.name $git_username
 		git config user.email $git_useremail
 
-		git submodule add $my_module
+		git submodule add $my_module 2>/dev/null
 		git commit -m 'my_module (git submodule) added for my new module-files repo'
 
 		mkdir home
@@ -122,8 +122,24 @@ EOF
 		git add .ssh
 		git commit -m 'Share known_hosts across machines'
 
+		local st3_settings="Library/Application Support/Sublime Text 3/Packages/User"
+		mkdir -p "$st3_settings"
+		cat > "$st3_settings/Preferences.sublime-settings" <<EOF
+{
+	"caret_style": "wide",
+	"default_line_ending": "unix",
+	"ensure_newline_at_eof_on_save": true,
+	"font_face": "Inconsolata-dz",
+	"rulers": [110],
+	"shift_tab_unindent": true,
+	"tab_size": 2
+}
+EOF
+		git add "$st3_settings/Preferences.sublime-settings"
+		git commit -m 'Added my Sublime Text 3 settings'
+
 		cd $dotfiles
-		git submodule add $dotfiles_vim_submodule home/.vim
+		git submodule add $dotfiles_vim_submodule home/.vim 2>/dev/null
 		git commit -m 'New vim configuration submodule'
 	) > /dev/null
 
@@ -136,5 +152,20 @@ EOF
 		touch .gitkeep
 		git add .gitkeep
 		git commit -m 'Add file to repo with weird name'
+	) > /dev/null
+
+	local namewithspaces="$REPO_FIXTURES/repo with spaces in name"
+	(
+		git init "$namewithspaces"
+		cd "$namewithspaces"
+		git config user.name $git_username
+		git config user.email $git_useremail
+		mkdir home
+		cd home
+
+		touch .repowithspacesfile
+
+		git add .repowithspacesfile
+		git commit -m 'Add file to repo with spaces in name'
 	) > /dev/null
 }
