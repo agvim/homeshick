@@ -143,8 +143,14 @@ function check {
 	if [[ $remote_head ]]; then
 		local local_head=$(cd "$repo"; git rev-parse HEAD)
 		if [[ $remote_head == $local_head ]]; then
-			success 'up to date'
-			exit_status=$EX_SUCCESS
+			git_status=$(cd "$repo"; git status --porcelain 2>/dev/null)
+			if [[ -z $git_status ]]; then
+				success 'up to date'
+				exit_status=$EX_SUCCESS
+			else
+				fail 'modified'
+				exit_status=$EX_MODIFIED
+			fi
 		else
 			local merge_base=$(cd "$repo"; git merge-base "$remote_head" "$local_head" 2>/dev/null)
 			local checked_ref
