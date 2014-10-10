@@ -1,5 +1,8 @@
 homeshick [![Build Status](https://travis-ci.org/andsens/homeshick.png?branch=development)](https://travis-ci.org/andsens/homeshick)
 =========
+
+This fork adds support for executing update and install scripts.
+
 In Unix, configuration files are king.  
 Tailoring tools to suit your needs through configuration can be empowering.  
 An immense number of hours is spent on getting these adjustments just right,
@@ -35,6 +38,22 @@ printf '\nalias homeshick source "$HOME/.homesick/repos/homeshick/bin/homeshick.
 # fish shell
 echo \n'source "$HOME/.homesick/repos/homeshick/homeshick.fish"' >> "$HOME/.config/fish/config.fish"
 ```
+
+Install scripts
+---------------
+
+When a castle is being cloned, homeshick checks for an oninstall.sh script on the root of the castle before symlinkng the castle.
+
+If the script is present, you are asked whether you want to run it.
+The script is run without arguments.
+
+Update scripts
+--------------
+
+When a castle is being pulled, homeshick checks for an onupdate.sh script on the root of the castle.
+
+If the script is present, you are asked whether you want to run it.
+The script is run with a 1 argument if the castle has been updated in this pull or with a 0 argument otherwise.
 
 Contributing
 ------------

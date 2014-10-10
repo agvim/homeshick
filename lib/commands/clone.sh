@@ -32,6 +32,13 @@ function clone {
 		[[ $? == 0 ]] || err $EX_SOFTWARE "Unable to clone submodules for $git_repo. Git says:" "$git_out"
 		success
 	fi
+	if [[ -f $repo_path/oninstall.sh ]]; then
+		prompt_no 'clone' "the castle $castle has an oninstall.sh script" "run it?"
+		if [[ $? = 0 ]]; then
+			$repo_path/oninstall.sh
+		fi
+	fi
+
 	return $EX_SUCCESS
 }
 

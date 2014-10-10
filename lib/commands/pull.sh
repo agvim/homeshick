@@ -17,9 +17,6 @@ function pull {
 	git_out=$(cd "$repo"; git pull 2>&1)
 	[[ $? == 0 ]] || err $EX_SOFTWARE "Unable to pull $repo. Git says:" "$git_out"
 
-	#TODO XXX FIXME: should find a cleaner way to detect it
-	[[ $git_out != "Already up-to-date." ]] && didupdate=1
-
 	version_compare $GIT_VERSION 1.6.5
 	if [[ $? != 2 ]]; then
 		git_out=$(cd "$repo"; git submodule update --recursive --init 2>&1)
@@ -29,6 +26,8 @@ function pull {
 		[[ $? == 0 ]] || err $EX_SOFTWARE "Unable update submodules for $repo. Git says:" "$git_out"
 	fi
 	success
+	#TODO XXX FIXME: should find a cleaner way to detect it
+	[[ $git_out != "Already up-to-date." ]] && didupdate=1
 	if [[ -f $repo/onupdate.sh ]]; then
 		prompt_no 'pull' "The castle $castle has an onupdate.sh script" "run it (arg=$didupdate)?"
 		if [[ $? = 0 ]]; then
