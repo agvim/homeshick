@@ -19,11 +19,11 @@ function clone {
 	local git_out
 	version_compare $GIT_VERSION 1.6.5
 	if [[ $? != 2 ]]; then
-		git_out=$(git clone --recursive "$git_repo" "$repo_path" 2>&1)
+		git_out=$(git clone --depth 1 --recursive "$git_repo" "$repo_path" 2>&1)
 		[[ $? == 0 ]] || err $EX_SOFTWARE "Unable to clone $git_repo. Git says:" "$git_out"
 		success
 	else
-		git_out=$(git clone "$git_repo" "$repo_path" 2>&1)
+		git_out=$(git clone --depth 1 "$git_repo" "$repo_path" 2>&1)
 		[[ $? == 0 ]] || err $EX_SOFTWARE "Unable to clone $git_repo. Git says:" "$git_out"
 		success
 
