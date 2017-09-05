@@ -43,11 +43,14 @@ function symlink_new_files {
 		local castle=$1
 		shift
 		local repo="$repos/$castle"
+		if [[ ! -d $repo/home ]]; then
+			continue;
+		fi
 		local git_out
 		local now=$(date +%s)
 		git_out=$(cd "$repo"; git diff --name-only --diff-filter=A HEAD@{$[$now-$T_START+1].seconds.ago} HEAD -- home 2>/dev/null | wc -l 2>&1)
 		[[ $? == 0 ]] || continue # Ignore errors, this operation is not mission critical
-		if [[ $git_out > 0 ]]; then
+		if [[ $git_out -gt 0 ]]; then
 			updated_castles+=("$castle")
 		fi
 	done

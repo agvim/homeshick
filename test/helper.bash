@@ -13,8 +13,11 @@ function export_env_vars {
 	export HOMESICK="$HOME/.homesick"
 
 	export HOMESHICK_FN="homeshick"
-	export HOMESHICK_DIR=${HOMESHICK_DIR:-$(dirname "${TESTDIR}")}
-	export HOMESHICK_FN_SRC="$HOMESHICK_DIR/homeshick.sh"
+	local repo_dir=$(cd "${TESTDIR}/.."; printf "$(pwd)")
+	export HOMESHICK_DIR=${HOMESHICK_DIR:-$repo_dir}
+	export HOMESHICK_FN_SRC_SH="$HOMESHICK_DIR/homeshick.sh"
+	export HOMESHICK_FN_SRC_CSH="$HOMESHICK_DIR/bin/homeshick.csh"
+	export HOMESHICK_FN_SRC_FISH="$HOMESHICK_DIR/homeshick.fish"
 	export HOMESHICK_BIN="$HOMESHICK_DIR/bin/homeshick"
 
 	# Check if expect is installed
@@ -47,6 +50,17 @@ function mk_structure {
 	mkdir "$REPO_FIXTURES" "$HOME" "$NOTHOME"
 }
 
+function ln_homeshick {
+	local hs_repo=$HOMESICK/repos/homeshick
+	mkdir -p $hs_repo
+	local repo_dir=$(cd "${TESTDIR}/.."; printf "$(pwd)")
+	ln -s "$repo_dir/homeshick.sh" "${hs_repo}/homeshick.sh"
+	ln -s "$repo_dir/homeshick.fish" "${hs_repo}/homeshick.fish"
+	ln -s "$repo_dir/bin" "${hs_repo}/bin"
+	ln -s "$repo_dir/lib" "${hs_repo}/lib"
+	ln -s "$repo_dir/completions" "${hs_repo}/completions"
+}
+
 function rm_structure {
 	# Make sure _TMPDIR wasn't unset
 	[[ -n $_TMPDIR ]] && rm -rf $_TMPDIR
@@ -56,7 +70,7 @@ function setup_env {
 	remove_coreutils_from_path
 	export_env_vars
 	mk_structure
-	source $HOMESHICK_FN_SRC
+	source $HOMESHICK_FN_SRC_SH
 }
 
 function setup {
@@ -89,7 +103,7 @@ function get_inode_no {
 	stat -c %i $1 2>/dev/null || stat -f %i $1
 }
 
-# Snatched from http://stackoverflow.com/questions/4023830/bash-how-compare-two-strings-in-version-format 
+# Snatched from http://stackoverflow.com/questions/4023830/bash-how-compare-two-strings-in-version-format
 function version_compare {
 	if [[ $1 == $2 ]]; then
 		return 0

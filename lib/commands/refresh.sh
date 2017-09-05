@@ -2,12 +2,12 @@
 
 
 function refresh {
-	[[ ! $1 || ! $2 ]] && help_err last-update
+	[[ ! $1 || ! $2 ]] && help_err refresh
 	local threshhold=$1
 	local castle=$2
 	local fetch_head="$repos/$castle/.git/FETCH_HEAD"
 	pending 'checking' "$castle"
-	castle_exists 'check freshness' "$castle"
+	castle_exists 'refresh' "$castle"
 
 	if [[ -e $fetch_head ]]; then
 		local last_mod=$(stat -c %Y "$fetch_head" 2> /dev/null || stat -f %m "$fetch_head")
@@ -30,7 +30,12 @@ function pull_outdated {
 	local outdated_castles=()
 	while [[ $# -gt 0 ]]; do
 		local castle=$1; shift
-		local fetch_head="$repos/$castle/.git/FETCH_HEAD"
+		local repo="$repos/$castle"
+		if [[ ! -d $repo ]]; then
+			# bogus argument, skip. User has already been warned by refresh()
+			continue
+		fi
+		local fetch_head="$repo/.git/FETCH_HEAD"
 		# When in interactive mode:
 		# No matter if we are going to pull the castles or not
 		# we reset the outdated ones by touching FETCH_HEAD
