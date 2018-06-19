@@ -2,18 +2,21 @@
 
 function export_env_vars {
 	if [[ -n $BATS_TEST_DIRNAME ]]; then
-		export TESTDIR=$(cd "${BATS_TEST_DIRNAME}/.."; printf "$(pwd)")
+		TESTDIR=$(cd "$BATS_TEST_DIRNAME/.." && pwd)
 	else
-		export TESTDIR=$(cd "${SCRIPTDIR}"; printf "$(pwd)")
+		TESTDIR=$(cd "$SCRIPTDIR" && pwd)
 	fi
-	export _TMPDIR=$(mktemp -d 2>/dev/null || mktemp -d -t homeshick)
-	export REPO_FIXTURES="${_TMPDIR}/repos"
-	export HOME="${_TMPDIR}/home"
-	export NOTHOME="${_TMPDIR}/nothome"
+	export TESTDIR
+	_TMPDIR=$(mktemp -d 2>/dev/null || mktemp -d -t homeshick)
+	export _TMPDIR
+	export REPO_FIXTURES="$_TMPDIR/repos"
+	export HOME="$_TMPDIR/home"
+	export NOTHOME="$_TMPDIR/nothome"
 	export HOMESICK="$HOME/.homesick"
 
 	export HOMESHICK_FN="homeshick"
-	local repo_dir=$(cd "${TESTDIR}/.."; printf "$(pwd)")
+	local repo_dir
+	repo_dir=$(cd "$TESTDIR/.." && pwd)
 	export HOMESHICK_DIR=${HOMESHICK_DIR:-$repo_dir}
 	export HOMESHICK_FN_SRC_SH="$HOMESHICK_DIR/homeshick.sh"
 	export HOMESHICK_FN_SRC_CSH="$HOMESHICK_DIR/bin/homeshick.csh"
@@ -21,11 +24,10 @@ function export_env_vars {
 	export HOMESHICK_BIN="$HOMESHICK_DIR/bin/homeshick"
 
 	# Check if expect is installed
-	run type expect >/dev/null 2>&1
-	if [[ $status != 0 ]]; then
-		export EXPECT_INSTALLED=false
-	else
+	if type expect &>/dev/null; then
 		export EXPECT_INSTALLED=true
+	else
+		export EXPECT_INSTALLED=false
 	fi
 }
 
@@ -33,8 +35,7 @@ function remove_coreutils_from_path {
 	# Check if coreutils is in PATH
 	system=$(uname -a)
 	if [[ $system =~ "Darwin" && ! $system =~ "AppleTV" ]]; then
-		run type brew >/dev/null 2>&1
-		if [[ $status = 0 ]]; then
+		if type brew &>/dev/null; then
 			coreutils_path=$(brew --prefix coreutils 2>/dev/null)/libexec/gnubin
 			if [[ -d $coreutils_path && $PATH == *$coreutils_path* ]]; then
 				if [[ -z $HOMESHICK_KEEP_PATH || $HOMESHICK_KEEP_PATH == false ]]; then
@@ -52,25 +53,27 @@ function mk_structure {
 
 function ln_homeshick {
 	local hs_repo=$HOMESICK/repos/homeshick
-	mkdir -p $hs_repo
-	local repo_dir=$(cd "${TESTDIR}/.."; printf "$(pwd)")
-	ln -s "$repo_dir/homeshick.sh" "${hs_repo}/homeshick.sh"
-	ln -s "$repo_dir/homeshick.fish" "${hs_repo}/homeshick.fish"
-	ln -s "$repo_dir/bin" "${hs_repo}/bin"
-	ln -s "$repo_dir/lib" "${hs_repo}/lib"
-	ln -s "$repo_dir/completions" "${hs_repo}/completions"
+	mkdir -p "$hs_repo"
+	local repo_dir
+	repo_dir=$(cd "$TESTDIR/.." && pwd)
+	ln -s "$repo_dir/homeshick.sh" "$hs_repo/homeshick.sh"
+	ln -s "$repo_dir/homeshick.fish" "$hs_repo/homeshick.fish"
+	ln -s "$repo_dir/bin" "$hs_repo/bin"
+	ln -s "$repo_dir/lib" "$hs_repo/lib"
+	ln -s "$repo_dir/completions" "$hs_repo/completions"
 }
 
 function rm_structure {
 	# Make sure _TMPDIR wasn't unset
-	[[ -n $_TMPDIR ]] && rm -rf $_TMPDIR
+	[[ -n $_TMPDIR ]] && rm -rf "$_TMPDIR"
 }
 
 function setup_env {
 	remove_coreutils_from_path
 	export_env_vars
 	mk_structure
-	source $HOMESHICK_FN_SRC_SH
+	# shellcheck source=homeshick.sh
+	source "$HOMESHICK_FN_SRC_SH"
 }
 
 function setup {
@@ -83,13 +86,16 @@ function teardown {
 
 function fixture {
 	local name=$1
-	[[ -e "${REPO_FIXTURES}/$name" ]] || source "${TESTDIR}/fixtures/${name}.sh"
+	if [[ ! -e "$REPO_FIXTURES/$name" ]]; then
+		# shellcheck disable=SC1090
+		source "$TESTDIR/fixtures/$name.sh"
+	fi
 }
 
 function castle {
 	local fixture_name=$1
 	fixture "$fixture_name"
-	$HOMESHICK_FN --batch clone "${REPO_FIXTURES}/${fixture_name}" > /dev/null
+	$HOMESHICK_FN --batch clone "$REPO_FIXTURES/$fixture_name" > /dev/null
 }
 
 function is_symlink {
@@ -100,12 +106,12 @@ function is_symlink {
 }
 
 function get_inode_no {
-	stat -c %i $1 2>/dev/null || stat -f %i $1
+	stat -c %i "$1" 2>/dev/null || stat -f %i "$1"
 }
 
 # Snatched from http://stackoverflow.com/questions/4023830/bash-how-compare-two-strings-in-version-format
 function version_compare {
-	if [[ $1 == $2 ]]; then
+	if [[ $1 == "$2" ]]; then
 		return 0
 	fi
 	local IFS=.
@@ -132,13 +138,16 @@ function version_compare {
 function get_git_version {
 	GIT_VERSION=$(git --version | grep 'git version' | cut -d ' ' -f 3)
 	[[ ! $GIT_VERSION =~ ([0-9]+)(\.[0-9]+){0,3} ]] && skip 'could not detect git version'
-	printf $GIT_VERSION
+	printf "%s" "$GIT_VERSION"
 }
 
 function mock_git_version {
 	# To mock a git version we simply create a function wrapper for it
 	# and forward all calls to git except `git --version`
-	local real_git=$(which git)
+	local real_git
+	real_git=$(which git)
+	# Don't mess with quoting in this eval, it works...
+	# shellcheck disable=SC2086
 	eval "
 		function git {
 			if [[ \$1 == '--version' ]]; then
@@ -165,7 +174,9 @@ function mock_git_version {
 function commit_repo_state {
 	local repo=$1
 	(
-		cd $repo
+		# Let cd just fail
+		# shellcheck disable=SC2164
+		cd "$repo"
 		git config user.name "Homeshick user"
 		git config user.email "homeshick@example.com"
 		git add -A
