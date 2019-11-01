@@ -19,8 +19,8 @@ function export_env_vars {
 	repo_dir=$(cd "$TESTDIR/.." && pwd)
 	export HOMESHICK_DIR=${HOMESHICK_DIR:-$repo_dir}
 	export HOMESHICK_FN_SRC_SH="$HOMESHICK_DIR/homeshick.sh"
-	export HOMESHICK_FN_SRC_CSH="$HOMESHICK_DIR/bin/homeshick.csh"
 	export HOMESHICK_FN_SRC_FISH="$HOMESHICK_DIR/homeshick.fish"
+	export HOMESHICK_FN_SRC_CSH="$HOMESHICK_DIR/homeshick.csh"
 	export HOMESHICK_BIN="$HOMESHICK_DIR/bin/homeshick"
 
 	# Check if expect is installed
@@ -57,6 +57,7 @@ function ln_homeshick {
 	local repo_dir
 	repo_dir=$(cd "$TESTDIR/.." && pwd)
 	ln -s "$repo_dir/homeshick.sh" "$hs_repo/homeshick.sh"
+	ln -s "$repo_dir/homeshick.csh" "$hs_repo/homeshick.csh"
 	ln -s "$repo_dir/homeshick.fish" "$hs_repo/homeshick.fish"
 	ln -s "$repo_dir/bin" "$hs_repo/bin"
 	ln -s "$repo_dir/lib" "$hs_repo/lib"
@@ -115,6 +116,7 @@ function version_compare {
 		return 0
 	fi
 	local IFS=.
+	# shellcheck disable=SC2206
 	local i ver1=($1) ver2=($2)
 	# fill empty fields in ver1 with zeros
 	for ((i=${#ver1[@]}; i<${#ver2[@]}; i++)); do
@@ -136,39 +138,13 @@ function version_compare {
 }
 
 function get_git_version {
-	GIT_VERSION=$(git --version | grep 'git version' | cut -d ' ' -f 3)
-	[[ ! $GIT_VERSION =~ ([0-9]+)(\.[0-9]+){0,3} ]] && skip 'could not detect git version'
+	if [[ -z $GIT_VERSION ]]; then
+		read -r _ _ GIT_VERSION _ < <(command git --version)
+		if [[ ! $GIT_VERSION =~ ([0-9]+)(\.[0-9]+){0,3} ]]; then
+			skip 'could not detect git version'
+		fi
+	fi
 	printf "%s" "$GIT_VERSION"
-}
-
-function mock_git_version {
-	# To mock a git version we simply create a function wrapper for it
-	# and forward all calls to git except `git --version`
-	local real_git
-	real_git=$(which git)
-	# Don't mess with quoting in this eval, it works...
-	# shellcheck disable=SC2086
-	eval "
-		function git {
-			if [[ \$1 == '--version' ]]; then
-					echo "git version $1"
-					return 0
-				else
-					local res
-					# Some variable expansions used by git internally may break,
-					# if we just forward the arguments with '\$@',
-					# so we unset this function until the execution is completed.
-					unset git
-					$real_git "\$@"
-					res=\$?
-					mock_git_version $1
-					return \$res
-			fi
-		}
-	"
-	# The functions need to be exported for them to work in child processes
-	export -f git
-	export -f mock_git_version
 }
 
 function commit_repo_state {
