@@ -70,7 +70,7 @@ done
 [[ $# -gt 0 ]] || cmd="help"
 
 # Get the subcommand
-valid_commands=(cd clone generate list check updates refresh pull symlink link track help)
+valid_commands=(cd clone generate list check updates refresh pull symlink link track help offline)
 if [[ ! $cmd ]]; then
 	# We actually want literal matching of the rhs here, $1 shouldn't be a regexp
 	# shellcheck disable=SC2076
@@ -117,7 +117,7 @@ while [[ $# -gt 0 ]]; do
 	fi
 
 	case $cmd in
-		cd | clone | generate | check | updates | pull | symlink | link)
+		cd | clone | generate | check | updates | pull | symlink | link | offline)
 			params+=("$1")
 			shift; continue ;;
 		refresh)
@@ -142,7 +142,7 @@ if [[ ${#params[@]} -eq 0 ]]; then
 				params+=("$name")
 			done < <(list_castle_names) ;;
 		# These commands require parameters, show the help message instead
-		cd | clone | generate | track) help_cmd=$cmd; cmd="help"; exit_status=$EX_USAGE ;;
+		cd | clone | generate | track | offline) help_cmd=$cmd; cmd="help"; exit_status=$EX_USAGE ;;
 	esac
 fi
 
@@ -158,6 +158,8 @@ case $cmd in
 	updates)
 		# shellcheck source=lib/commands/check.sh
 		source "$homeshick/lib/commands/check.sh" ;;
+    offline)
+        source "$homeshick/lib/commands/offline.sh" ;;
 	*)
 		# Don't know what will be included, so just disable the rule
 		# shellcheck disable=SC1090
@@ -185,6 +187,8 @@ case $cmd in
 					symlink "$param" ;;
 				track)
 					track "$castle" "$param" ;;
+				offline)
+					offline "$param" ;;
 			esac
 			result=$?
 			if [[ $result == "$EX_USAGE" ]]; then

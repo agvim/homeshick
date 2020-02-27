@@ -23,6 +23,7 @@ printf "homes\e[1;34mh\e[0mick uses git in concert with symlinks to track your p
   homeshick link [CASTLE..]           # Symlinks all dotfiles from a castle
   homeshick track CASTLE FILE..       # Add a file to a castle
   homeshick help [TASK]               # Show usage of a task
+  homeshick offline make|deploy       # generate|deploy a tar file for offline usage
 
  Aliases:
   symlink # Alias to link
@@ -83,6 +84,10 @@ function extended_help {
       printf "This moves the file into the castle and creates a symlink in its place.\n"
       printf "Usage:\n  homeshick track CASTLE FILE.."
       ;;
+	    offline)
+	  printf "Creates or deploys an offline castles bundle\n"
+	  printf "Usage:\n  homeshick offline make|deploy"
+	  ;;
 		help)
       printf "Shows usage of a task\n"
       printf "Usage:\n  homeshick help [TASK]"

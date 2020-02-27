@@ -1,10 +1,11 @@
 homeshick [![Build Status](https://travis-ci.org/andsens/homeshick.png?branch=development)](https://travis-ci.org/andsens/homeshick)
 =========
 
-This fork adds support for executing update and install scripts.
+This fork adds support for executing update and install scripts and for
+packaging the castles for an offline machine.
 
-In Unix, configuration files are king.  
-Tailoring tools to suit your needs through configuration can be empowering.  
+In Unix, configuration files are king.
+Tailoring tools to suit your needs through configuration can be empowering.
 An immense number of hours is spent on getting these adjustments just right,
 but once you leave the confines of your own computer, these local optimizations are left behind.
 
