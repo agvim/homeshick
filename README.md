@@ -56,6 +56,17 @@ When a castle is being pulled, homeshick checks for an onupdate.sh script on the
 If the script is present, you are asked whether you want to run it.
 The script is run with a 1 argument if the castle has been updated in this pull or with a 0 argument otherwise.
 
+Offline command
+---------------
+
+`homeshick offline make` command can be used to create environment.tbz bundles.
+
+They are created by executing the makeoffline.sh scripts in each castle and copying the castles.
+makeoffline.sh receives as its argument the temporary folder where the offline bundle is being created.
+The result is compressed in a tbz that can be decompressed in a home directory of a machine without network access.
+
+`homeshick offline deploy` just relinks the homeshick castles
+
 Contributing
 ------------
 
